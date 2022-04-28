@@ -81,6 +81,19 @@ local function deleteBlips()
     blips = {}
 end
 
+CreateThread(function()
+    churchBlip = AddBlipForCoord(-1683.27, -289.59, 51.86)
+    SetBlipSprite(churchBlip, 409)
+    SetBlipScale(churchBlip, 0.75)
+    SetBlipDisplay(churchBlip, 4)
+    SetBlipColour(churchBlip, 0)
+    SetBlipAsShortRange(churchBlip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentSubstringPlayerName("Hill Velley Church")
+    EndTextCommandSetBlipName(churchBlip)
+end)
+
+
 local function spawnPeds()
     if not Config.Peds or not next(Config.Peds) or pedsSpawned then return end
     for i = 1, #Config.Peds do
