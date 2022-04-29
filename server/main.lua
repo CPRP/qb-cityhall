@@ -9,7 +9,6 @@ local availableJobs = {
     ["bus"] = "Dashound Bus",
     ["hotdog"] = "Chihuahua Hotdogs",
     ["mailcarrier"] = "GoPostal Mail",
-    ["construction"] = "LS Construction",
     ["lumberjack"] = "Lumber Yard",
     ["logistics"] = "East Coasts Inc.",
     ["burgershot"] = "Burgershot",
