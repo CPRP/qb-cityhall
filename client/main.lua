@@ -55,19 +55,18 @@ local function setCityhallPageState(bool, message)
     inRangeCityhall = false
 end
 
-local function createBlips()
-    for i = 1, #Config.Cityhalls do
-        local hall = Config.Cityhalls[i]
-        if hall.showBlip then
-            blips[#blips+1] = QBCore.Functions.CreateBlip(hall.coords, hall.blipData.sprite, hall.blipData.display, hall.blipData.scale, hall.blipData.colour, true, hall.blipData.title)
-        end
-    end
-    for i = 1, #Config.DrivingSchools do
-        local school = Config.DrivingSchools[i]
-        if school.showBlip then
-            blips[#blips+1] = QBCore.Functions.CreateBlip(school.coords, school.blipData.sprite, school.blipData.display, school.blipData.scale, school.blipData.colour, true, school.blipData.title)
-        end
-    end
+local function createBlip(options)
+    if not options.coords or type(options.coords) ~= 'table' and type(options.coords) ~= 'vector3' then return error(('createBlip() expected coords in a vector3 or table but received %s'):format(options.coords)) end
+    local blip = AddBlipForCoord(options.coords.x, options.coords.y, options.coords.z)
+    SetBlipSprite(blip, options.sprite or 1)
+    SetBlipDisplay(blip, options.display or 4)
+    SetBlipScale(blip, options.scale or 1.0)
+    SetBlipColour(blip, options.colour or 1)
+    SetBlipAsShortRange(blip, options.shortRange or false)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(options.title or 'No Title Given')
+    EndTextCommandSetBlipName(blip)
+    return blip
 end
 
 local function deleteBlips()
@@ -81,18 +80,36 @@ local function deleteBlips()
     blips = {}
 end
 
-CreateThread(function()
-    churchBlip = AddBlipForCoord(-1683.27, -289.59, 51.86)
-    SetBlipSprite(churchBlip, 409)
-    SetBlipScale(churchBlip, 0.75)
-    SetBlipDisplay(churchBlip, 4)
-    SetBlipColour(churchBlip, 0)
-    SetBlipAsShortRange(churchBlip, true)
-    BeginTextCommandSetBlipName("STRING")
-    AddTextComponentSubstringPlayerName("Hill Velley Church")
-    EndTextCommandSetBlipName(churchBlip)
-end)
-
+local function initBlips()
+    for i = 1, #Config.Cityhalls do
+        local hall = Config.Cityhalls[i]
+        if hall.showBlip then
+            blips[#blips+1] = createBlip({
+                coords = hall.coords,
+                sprite = hall.blipData.sprite,
+                display = hall.blipData.display,
+                scale = hall.blipData.scale,
+                colour = hall.blipData.colour,
+                shortRange = true,
+                title = hall.blipData.title
+            })
+        end
+    end
+    -- for i = 1, #Config.DrivingSchools do
+    --     local school = Config.DrivingSchools[i]
+    --     if school.showBlip then
+    --         blips[#blips+1] = createBlip({
+    --             coords = school.coords,
+    --             sprite = school.blipData.sprite,
+    --             display = school.blipData.display,
+    --             scale = school.blipData.scale,
+    --             colour = school.blipData.colour,
+    --             shortRange = true,
+    --             title = school.blipData.title
+    --         })
+    --     end
+    -- end
+end
 
 local function spawnPeds()
     if not Config.Peds or not next(Config.Peds) or pedsSpawned then return end
@@ -107,7 +124,7 @@ local function spawnPeds()
         FreezeEntityPosition(ped, true)
         SetEntityInvincible(ped, true)
         SetBlockingOfNonTemporaryEvents(ped, true)
-        TaskStartScenarioInPlace(ped, current.scenario, true)
+        TaskStartScenarioInPlace(ped, current.scenario, true, true)
         current.pedHandle = ped
         if Config.UseTarget then
             local opts = nil
@@ -224,19 +241,21 @@ end)
 
 -- NUI Callbacks
 
-RegisterNUICallback('close', function()
+RegisterNUICallback('close', function(_, cb)
     setCityhallPageState(false, false)
     if not Config.UseTarget and inRangeCityhall then exports['qb-core']:DrawText('[E] Open Cityhall') end -- Reopen interaction when you're still inside the zone
+    cb('ok')
 end)
 
-RegisterNUICallback('requestId', function(id)
+RegisterNUICallback('requestId', function(id, cb)
     local license = Config.Cityhalls[closestCityhall].licenses[id.type]
     if inRangeCityhall and license and id.cost == license.cost then
-        TriggerServerEvent('qb-cityhall:server:requestId', id.type, id.cost)
+        TriggerServerEvent('qb-cityhall:server:requestId', id.type, closestCityhall)
         QBCore.Functions.Notify(('You have received your %s for $%s'):format(license.label, id.cost), 'success', 3500)
     else
         QBCore.Functions.Notify(Lang:t('error.not_in_range'), 'error')
     end
+    cb('ok')
 end)
 
 RegisterNUICallback('requestLicenses', function(_, cb)
@@ -250,12 +269,13 @@ RegisterNUICallback('requestLicenses', function(_, cb)
     cb(availableLicenses)
 end)
 
-RegisterNUICallback('applyJob', function(job)
+RegisterNUICallback('applyJob', function(job, cb)
     if inRangeCityhall then
         TriggerServerEvent('qb-cityhall:server:ApplyJob', job, Config.Cityhalls[closestCityhall].coords)
     else
         QBCore.Functions.Notify(Lang:t('error.not_in_range'), 'error')
     end
+    cb('ok')
 end)
 
 -- Threads
@@ -273,7 +293,7 @@ CreateThread(function()
 end)
 
 CreateThread(function()
-    createBlips()
+    initBlips()
     spawnPeds()
     QBCore.Functions.TriggerCallback('qb-cityhall:server:receiveJobs', function(result)
         SendNUIMessage({
