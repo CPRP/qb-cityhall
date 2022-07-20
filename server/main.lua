@@ -13,7 +13,6 @@ local availableJobs = {
 }
 
 -- Functions
-
 local function giveStarterItems()
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
