@@ -10,6 +10,7 @@ local availableJobs = {
     ["hotdog"] = "Chihuahua Hotdogs",
     ["mailcarrier"] = "GoPostal Mail",
     ["logistics"] = "East Coasts Inc.",
+    ["hotdog"] = "Hot Dog Stand"
 }
 
 -- Functions
