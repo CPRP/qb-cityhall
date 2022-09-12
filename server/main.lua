@@ -3,7 +3,6 @@ local availableJobs = {
     ["unemployed"] = "Unemployed",
     ["trucker"] = "Walker Logistics",
     ["taxi"] = "Downtown Cab Co.",
-    ["tow"] = "Hayes Towing",
     ["reporter"] = "News Reporter",
     ["garbage"] = "South LS Recycling",
     ["bus"] = "Dashound Bus",
