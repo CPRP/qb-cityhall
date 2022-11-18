@@ -11,6 +11,19 @@ local availableJobs = {
     ["logistics"] = "East Coasts Inc.",
 }
 
+-- Exports
+
+local function AddCityJob(jobName, label)
+    if availableJobs[jobName] ~= nil then
+        return false, "already added"
+    else
+        availableJobs[jobName] = label
+        return true, "success"
+    end
+end
+
+exports('AddCityJob', AddCityJob)
+
 -- Functions
 local function giveStarterItems()
     local Player = QBCore.Functions.GetPlayer(source)
