@@ -1,20 +1,19 @@
 local QBCore = exports['qb-core']:GetCoreObject()
-local availableJobs = {
-    ["unemployed"] = "Unemployed",
-    ["taxi"] = "Downtown Cab Co.",
-    ["garbage"] = "South LS Recycling",
-    ["mailcarrier"] = "GoPostal Mail",
-}
+local availableJobs = {}
+
+if not QBCore.Shared.QBJobsStatus then
+    availableJobs = Config.AvailableJobs
+end
 
 -- Exports
 
-local function AddCityJob(jobName, label)
-    if availableJobs[jobName] ~= nil then
-        return false, "already added"
-    else
-        availableJobs[jobName] = label
-        return true, "success"
-    end
+local function AddCityJob(jobName, toCH)
+    if availableJobs[jobName] then return false, "already added" end
+    availableJobs[jobName] = {
+        ["label"] = toCH.label,
+        ["isManaged"] = toCH.isManaged
+    }
+    return true, "success"
 end
 
 exports('AddCityJob', AddCityJob)
@@ -80,7 +79,7 @@ RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
         info.birthdate = Player.PlayerData.charinfo.birthdate
 		info.gender = Player.PlayerData.charinfo.gender
     else
-        return DropPlayer(src, 'Attempted exploit abuse')
+        return false -- DropPlayer(src, 'Attempted exploit abuse')
     end
     if not Player.Functions.AddItem(item, 1, nil, info) then return end
     TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
@@ -99,7 +98,7 @@ RegisterNetEvent('qb-cityhall:server:sendDriverTest', function(instructors)
             local mailData = {
                 sender = "Township",
                 subject = "Driving lessons request",
-                message = "Hello,<br><br>We have just received a message that someone wants to take driving lessons.<br>If you are willing to teach, please contact them:<br>Name: <strong>".. Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname .. "<br />Phone Number: <strong>"..Player.PlayerData.charinfo.phone.."</strong><br><br>Kind regards,<br>Township Los Santos",
+                message = "Hello,<br><br>We have just received a message that someone wants to take driving lessons.<br>If you are willing to teach, please contact them:<br>Name: <strong>" .. Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname .. "<br />Phone Number: <strong>" .. Player.PlayerData.charinfo.phone .. "</strong><br><br>Kind regards,<br>Township Los Santos",
                 button = {}
             }
             exports["qb-phone"]:sendNewMailToOffline(citizenid, mailData)
@@ -114,19 +113,32 @@ RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job, cityhallCoords)
     if not Player then return end
     local ped = GetPlayerPed(src)
     local pedCoords = GetEntityCoords(ped)
-    local JobInfo = QBCore.Shared.Jobs[job]
+
+    local data = {
+        ["src"] = src,
+        ["job"] = job
+    }
     if #(pedCoords - cityhallCoords) >= 20.0 or not availableJobs[job] then
-        return DropPlayer(source, "Attempted exploit abuse")
+        return false -- DropPlayer(source, "Attempted exploit abuse")
     end
-    Player.Functions.SetJob(job, 0)
-    TriggerClientEvent('QBCore:Notify', src, Lang:t('info.new_job', {job = JobInfo.label}))
+    if QBCore.Shared.QBJobsStatus then
+        exports["qb-jobs"]:submitApplication(data, "Jobs")
+    else
+        local JobInfo = QBCore.Shared.Jobs[job]
+        Player.Functions.SetJob(data.job, 0)
+        TriggerClientEvent('QBCore:Notify', data.src, Lang:t('info.new_job', { job = JobInfo.label }))
+    end
 end)
 
 RegisterNetEvent('qb-cityhall:server:getIDs', giveStarterItems)
 
+RegisterNetEvent('QBCore:Client:UpdateObject', function()
+    QBCore = exports['qb-core']:GetCoreObject()
+end)
+
 -- Commands
 
-QBCore.Commands.Add("drivinglicense", "Give a drivers license to someone", {{"id", "ID of a person"}}, true, function(source, args)
+QBCore.Commands.Add("drivinglicense", "Give a drivers license to someone", { { "id", "ID of a person" } }, true, function(source, args)
     local Player = QBCore.Functions.GetPlayer(source)
     local SearchedPlayer = QBCore.Functions.GetPlayer(tonumber(args[1]))
     if SearchedPlayer then
